@@ -114,6 +114,11 @@ create table auditoria (
   creado_en timestamptz not null default now()
 );
 
+-- Rol de la aplicación (se crea primero porque las políticas lo nombran).
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'app_user') then create role app_user login; end if;
+end $$;
+
 -- Aislamiento por comercio a nivel base de datos (defensa en profundidad):
 -- el backend hace `select set_config('app.comercio_id', <uuid>, true)` al inicio de cada transacción.
 do $$
@@ -138,9 +143,6 @@ begin
 end $$;
 
 -- Rol de la aplicación: sin bypass de RLS.
-do $$ begin
-  if not exists (select 1 from pg_roles where rolname = 'app_user') then create role app_user login; end if;
-end $$;
 grant select, insert, update, delete on all tables in schema public to app_user;
 grant usage, select on all sequences in schema public to app_user;
 
