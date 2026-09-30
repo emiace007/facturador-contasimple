@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Sin esto, refrescar una ruta como /vencimientos da 404 en Netlify
+# (React Router maneja el routing en el cliente).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
