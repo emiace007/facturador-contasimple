@@ -126,9 +126,35 @@ begin
   end loop;
 end $$;
 
+-- Tablas sin comercio_id (usuarios, sesiones, comercios, auditoria): RLS activado y solo las ve el rol de la app.
+-- Sin esto, la API pública de Supabase (clave anon) podría leer contraseñas y sesiones.
+do $$
+declare t text;
+begin
+  foreach t in array array['comercios','usuarios','sesiones','auditoria'] loop
+    execute format('alter table %I enable row level security', t);
+    execute format('create policy solo_app on %I to app_user using (true) with check (true)', t);
+  end loop;
+end $$;
+
 -- Rol de la aplicación: sin bypass de RLS.
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'app_user') then create role app_user login; end if;
 end $$;
 grant select, insert, update, delete on all tables in schema public to app_user;
 grant usage, select on all sequences in schema public to app_user;
+
+-- Supabase: la API pública (anon / authenticated) no debe tocar nada. Todo pasa por el backend con app_user.
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    revoke all on all tables in schema public from anon;
+    revoke all on all sequences in schema public from anon;
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    revoke all on all tables in schema public from authenticated;
+    revoke all on all sequences in schema public from authenticated;
+  end if;
+end $$;
+
+-- DESPUÉS de correr este archivo, definir la clave del rol de la app (en Supabase SQL Editor, con una clave larga y propia):
+--   alter role app_user with password 'PONER-UNA-CLAVE-LARGA-ACA';
