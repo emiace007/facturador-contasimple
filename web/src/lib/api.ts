@@ -16,6 +16,13 @@ export interface Comercio {
   delegacion_estado?: string;
   activo?: boolean;
 }
+export interface Usuario {
+  id: string;
+  email: string;
+  rol: 'dueno' | 'empleado';
+  activo: boolean;
+  creado_en: string;
+}
 export interface Producto {
   id: string;
   nombre: string;
@@ -100,7 +107,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     throw new ApiError('No se pudo conectar con el servidor. Probá de nuevo en un momento.', 0);
   }
   const json = await res.json().catch(() => ({}));
-  if (res.status === 401 && s && path !== '/api/auth/login') {
+  if (res.status === 401 && s && path !== '/api/auth/login' && path !== '/api/auth/logout') {
     setSesion(null);
     window.location.reload();
   }
@@ -112,6 +119,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 export const api = {
   login: async (email: string, password: string) =>
     (await request<{ data: Omit<Sesion, 'email'> }>('POST', '/api/auth/login', { email, password })).data,
+  logout: async () => { await request('POST', '/api/auth/logout').catch(() => {}); },
+  cambiarMiClave: async (actual: string, nueva: string) => { await request('POST', '/api/auth/password', { actual, nueva }); },
+  usuarios: async (comercioId?: string) =>
+    (await request<{ data: Usuario[] }>('GET', '/api/usuarios' + (comercioId ? `?comercioId=${encodeURIComponent(comercioId)}` : ''))).data,
+  crearUsuario: async (d: { email: string; password: string; rol: 'dueno' | 'empleado'; comercioId?: string }) =>
+    (await request<{ data: Usuario }>('POST', '/api/usuarios', d)).data,
+  estadoUsuario: async (id: string, activo: boolean) => { await request('POST', `/api/usuarios/${id}/estado`, { activo }); },
+  claveUsuario: async (id: string, password: string) => { await request('POST', `/api/usuarios/${id}/password`, { password }); },
   miComercio: async () => (await request<{ data: Comercio }>('GET', '/api/comercio')).data,
   comercios: async () => (await request<{ data: Comercio[] }>('GET', '/api/comercios')).data,
   crearComercio: async (d: Record<string, unknown>) => (await request<{ data: Comercio }>('POST', '/api/comercios', d)).data,
