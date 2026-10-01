@@ -1,4 +1,4 @@
--- Facturador para comercios — esquema Postgres (multi-comercio).
+-- Facturador Contasimple — esquema Postgres (multi-comercio).
 -- Regla de oro: toda tabla de datos lleva comercio_id y se filtra por él.
 
 create extension if not exists pgcrypto;

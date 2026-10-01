@@ -1,6 +1,6 @@
 {
-  "name": "Facturador para comercios",
-  "short_name": "Facturador",
+  "name": "Facturador Contasimple",
+  "short_name": "Contasimple",
   "description": "Facturación electrónica para comercios.",
   "start_url": "/",
   "scope": "/",

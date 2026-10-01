@@ -44,7 +44,7 @@ export default function App() {
   return (
     <div className="min-h-full flex flex-col md:flex-row bg-slate-50">
       <aside className="md:w-56 bg-white border-b md:border-b-0 md:border-r border-slate-200/70 md:min-h-screen shrink-0">
-        <div className="px-4 py-3 font-semibold text-brand-700">Facturador</div>
+        <div className="px-4 py-3 font-semibold text-brand-700">Facturador Contasimple</div>
         <nav className="flex md:flex-col gap-1 px-2 pb-2 overflow-x-auto">
           {nav.map((n) => (
             <NavLink key={n.to} to={n.to}

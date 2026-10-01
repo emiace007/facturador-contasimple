@@ -16,7 +16,7 @@ export default function LoginPage({ onLogin }: { onLogin: (s: Sesion) => void })
   return (
     <div className="min-h-full flex items-center justify-center bg-slate-50 p-4">
       <form onSubmit={enviar} className="w-full max-w-sm bg-white rounded-2xl border border-slate-200/70 shadow-sm p-6 space-y-4">
-        <h1 className="text-lg font-semibold text-brand-700">Facturador</h1>
+        <h1 className="text-lg font-semibold text-brand-700">Facturador Contasimple</h1>
         <p className="text-sm text-slate-500">Ingresá con tu email y contraseña.</p>
         <input type="email" required autoComplete="username" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
           className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />

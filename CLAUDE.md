@@ -1,4 +1,4 @@
-# Facturador para comercios — facturación electrónica ARCA multi-comercio
+# Facturador Contasimple — facturación electrónica ARCA para comercios
 
 App para que **comercios** emitan facturas electrónicas (individual o masiva). Derivado del sistema del Estudio Bertero
 (repos `estudio-contable-frontend` y `estudio-bertero-afip-backend`), pero **independiente**: no comparte Sheet, Apps Script ni deploy.
