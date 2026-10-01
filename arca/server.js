@@ -4,6 +4,7 @@ const { conTx, conTxGlobal } = require('./db');
 const { hashPassword, login, requireAuth, soloStaff, conComercio } = require('./auth');
 const { emitir } = require('./facturas');
 const { rutasUsuarios } = require('./usuarios');
+const { generarPdf } = require('./pdf');
 
 const crearApp = ({ emisor } = {}) => {
   const app = express();
@@ -64,14 +65,39 @@ const crearApp = ({ emisor } = {}) => {
   }));
 
   app.get('/api/comercios', requireAuth, soloStaff, wrap(async (_req, res) => {
-    const data = await conTxGlobal(async (c) => (await c.query('select id, razon_social, cuit, condicion_fiscal, punto_venta, delegacion_estado, activo from comercios order by razon_social')).rows);
+    const data = await conTxGlobal(async (c) => (await c.query('select id, razon_social, cuit, condicion_fiscal, punto_venta, domicilio, iibb, inicio_actividades, categoria_monotributo, delegacion_estado, activo from comercios order by razon_social')).rows);
+    res.json({ ok: true, data });
+  }));
+
+  // Datos del comercio que salen en la factura (solo el estudio).
+  app.post('/api/comercios/:id', requireAuth, soloStaff, wrap(async (req, res) => {
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return res.status(400).json({ ok: false, error: 'Id inválido' });
+    const b = req.body || {};
+    const txt = (v) => (v == null || String(v).trim() === '' ? null : String(v).trim().slice(0, 300));
+    if (b.razonSocial !== undefined && !txt(b.razonSocial)) return res.status(400).json({ ok: false, error: 'Falta la razón social.' });
+    if (b.inicioActividades && !/^\d{4}-\d{2}-\d{2}$/.test(b.inicioActividades)) return res.status(400).json({ ok: false, error: 'Fecha de inicio inválida.' });
+    if (b.puntoVenta != null && b.puntoVenta !== '' && !(Number.isInteger(Number(b.puntoVenta)) && Number(b.puntoVenta) > 0)) return res.status(400).json({ ok: false, error: 'Punto de venta inválido.' });
+    const data = await conTxGlobal(async (c) => {
+      const { rows } = await c.query(
+        `update comercios set
+           razon_social = coalesce($2, razon_social),
+           domicilio = $3, iibb = $4, inicio_actividades = $5::date, categoria_monotributo = $6,
+           punto_venta = coalesce($7, punto_venta)
+         where id = $1
+         returning id, razon_social, cuit, condicion_fiscal, punto_venta, domicilio, iibb, inicio_actividades, categoria_monotributo, delegacion_estado, activo`,
+        [req.params.id, txt(b.razonSocial), txt(b.domicilio), txt(b.iibb), b.inicioActividades || null, txt(b.categoriaMonotributo),
+         b.puntoVenta ? Number(b.puntoVenta) : null]);
+      if (rows[0]) await c.query('insert into auditoria(usuario_id, comercio_id, accion) values ($1,$2,$3)', [req.user.id, rows[0].id, 'editar_comercio']);
+      return rows[0];
+    });
+    if (!data) return res.status(404).json({ ok: false, error: 'Comercio inexistente' });
     res.json({ ok: true, data });
   }));
 
   // El comercio con el que se está trabajando (el del dueño, o el que eligió el estudio).
   app.get('/api/comercio', requireAuth, conComercio, wrap(async (req, res) => {
     const data = await conTxGlobal(async (c) => (await c.query(
-      'select id, razon_social, cuit, condicion_fiscal, punto_venta, delegacion_estado from comercios where id = $1 and activo', [req.comercioId])).rows[0]);
+      'select id, razon_social, cuit, condicion_fiscal, punto_venta, domicilio, iibb, inicio_actividades, categoria_monotributo, delegacion_estado from comercios where id = $1 and activo', [req.comercioId])).rows[0]);
     if (!data) return res.status(404).json({ ok: false, error: 'Comercio inexistente' });
     res.json({ ok: true, data });
   }));
@@ -100,6 +126,23 @@ const crearApp = ({ emisor } = {}) => {
     const data = await conTx(req.comercioId, async (c) => (await c.query(
       'select * from facturas order by creado_en desc limit $1', [Math.min(Number(req.query.limit) || 100, 500)])).rows);
     res.json({ ok: true, data });
+  }));
+
+  // PDF de una factura emitida, con el QR de ARCA.
+  app.get('/api/facturas/:id/pdf', requireAuth, conComercio, wrap(async (req, res) => {
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return res.status(400).json({ ok: false, error: 'Id inválido' });
+    const out = await conTx(req.comercioId, async (c) => {
+      const f = (await c.query('select * from facturas where id = $1', [req.params.id])).rows[0];
+      if (!f) return null;
+      const items = (await c.query('select descripcion, cantidad, precio_unitario from factura_items where factura_id = $1', [f.id])).rows;
+      return { f, items };
+    });
+    if (!out) return res.status(404).json({ ok: false, error: 'No existe' });
+    const comercio = await conTxGlobal(async (c) => (await c.query('select * from comercios where id = $1', [req.comercioId])).rows[0]);
+    const pdf = await generarPdf({ factura: out.f, items: out.items, comercio });
+    const nombre = `Factura-${({ 1: 'A', 6: 'B', 11: 'C' })[out.f.cbte_tipo]}-${String(out.f.punto_venta).padStart(5, '0')}-${String(out.f.numero).padStart(8, '0')}.pdf`;
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${nombre}"` });
+    res.send(pdf);
   }));
 
   // --- Carga masiva: se crea el lote y se emite una por una en segundo plano ---
