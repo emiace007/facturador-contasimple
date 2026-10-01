@@ -12,7 +12,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: AFIP_ENV
-        value: homologacion        # pasar a "produccion" solo a propósito: cada CAE es una factura real
+        sync: false                # se define en el panel: "homologacion" (prueba) o "produccion" (cada CAE es una factura real)
       - key: CORS_ORIGIN
         sync: false                # URL de la web en Netlify, ej. https://contasimple.netlify.app
       - key: DATABASE_URL
