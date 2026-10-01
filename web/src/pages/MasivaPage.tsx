@@ -47,7 +47,7 @@ function Masiva({ comercio }: { comercio: Comercio }) {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-slate-800">Carga masiva — {comercio.razon_social}</h1>
+      <h1 className="text-2xl md:text-3xl font-extrabold text-brand-950">Carga masiva — {comercio.razon_social}</h1>
       <div className={card + ' space-y-3'}>
         <p className="text-sm text-slate-500">
           Subí un Excel con una fila por factura. Columnas: Punto de venta, Tipo de comprobante, Concepto, Documento, Importe, Alicuota IVA, Condicion IVA,

@@ -6,7 +6,7 @@ export default function UsuariosPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-lg font-semibold text-slate-800">Usuarios</h1>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-brand-950">Usuarios</h1>
         <p className="text-sm text-slate-500 max-w-prose">Las personas que pueden entrar a facturar por tu comercio. Los empleados ven y cargan lo mismo que vos, pero no pueden agregar usuarios.</p>
       </div>
       <div className={card}>

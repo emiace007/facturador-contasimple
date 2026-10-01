@@ -15,7 +15,7 @@ export default function CuentaPage() {
   return (
     <div className="space-y-4 max-w-md">
       <div>
-        <h1 className="text-lg font-semibold text-slate-800">Mi cuenta</h1>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-brand-950">Mi cuenta</h1>
         {s?.email && <p className="text-sm text-slate-500">Entraste como {s.email}</p>}
       </div>
       <form className={card + ' space-y-3'} onSubmit={(e) => { e.preventDefault(); if (ok) m.mutate(); }}>

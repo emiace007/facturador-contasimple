@@ -19,7 +19,7 @@ export default function ComerciosPage() {
   const ok = f.razonSocial.trim() && f.cuit.replace(/\D/g, '').length === 11 && f.emailDueno.includes('@') && f.passwordDueno.length >= 8;
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold text-slate-800">Comercios</h1>
+      <h1 className="text-2xl md:text-3xl font-extrabold text-brand-950">Comercios</h1>
       <div className={card + ' grid gap-3 sm:grid-cols-2'}>
         <h2 className="sm:col-span-2 text-sm font-medium text-slate-700">Nuevo comercio</h2>
         <label className="text-xs text-slate-500">Razón social<input className={input} value={f.razonSocial} onChange={set('razonSocial')} /></label>

@@ -18,7 +18,7 @@ export default function LoginPage({ onLogin }: { onLogin: (s: Sesion) => void })
       <img src="/logo.png" alt="ContaSimple" className="h-11 w-auto" />
       <form onSubmit={enviar} className="w-full max-w-sm bg-white rounded-2xl shadow-xl shadow-brand-900/20 p-6 space-y-4">
         <div>
-          <h1 className="text-lg font-semibold text-slate-800">Facturador</h1>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-brand-950">Facturador</h1>
           <p className="text-sm text-slate-500">Ingresá con tu email y contraseña.</p>
         </div>
         <input type="email" required autoComplete="username" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
