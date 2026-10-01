@@ -3,20 +3,29 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Nunito Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
       colors: {
-        // Paleta corporativa: verde agua como color primario del estudio
+        // Paleta ContaSimple: azul del logo (#345BB6) como primario y amarillo del ícono como acento
         brand: {
-          50: '#f4f8f1',
-          100: '#e3efdd',
-          200: '#c8dcbc',
-          300: '#a9c595',
-          400: '#8fae7a',
-          500: '#739660',
-          600: '#5c7c4d',
-          700: '#4d6746',
-          800: '#3f5339',
-          900: '#344530',
-          950: '#1d281b',
+          50: '#f0f3fa',
+          100: '#e0e7f5',
+          200: '#c2ceeb',
+          300: '#98acdd',
+          400: '#6685cc',
+          500: '#3963c6',
+          600: '#345bb6',
+          700: '#2a4993',
+          800: '#223b77',
+          900: '#1b305f',
+          950: '#111e3b',
+        },
+        acento: {
+          100: '#fef3d6',
+          300: '#fcd77a',
+          400: '#fac43e',
+          600: '#c98f0a',
         },
       },
     },
