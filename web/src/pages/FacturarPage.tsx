@@ -5,6 +5,7 @@ import { CONDICIONES_IVA_RECEPTOR, condicionIvaSugerida } from '../lib/condicion
 import { hoyIso, rangoFechaFactura } from '../lib/fechaFactura';
 import { formatMoney, formatMonto } from '../lib/format';
 import { boton, card, ConComercio, input } from '../components/Aviso';
+import PdfBoton from '../components/PdfBoton';
 
 export default function FacturarPage() {
   return <ConComercio>{(c) => <Formulario comercio={c} />}</ConComercio>;
@@ -108,7 +109,10 @@ function Formulario({ comercio }: { comercio: Comercio }) {
       {resultado && (
         <div className={card + (resultado.estado === 'emitida' ? ' border-green-300' : ' border-red-300')}>
           {resultado.estado === 'emitida'
-            ? <p className="text-sm text-green-700"><b>{numeroFactura(resultado)}</b> emitida · CAE {resultado.cae} · {formatMonto(resultado.importe_total)}</p>
+            ? <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-green-700"><b>{numeroFactura(resultado)}</b> emitida · CAE {resultado.cae} · {formatMonto(resultado.importe_total)}</p>
+                <PdfBoton id={resultado.id} texto="Ver factura (PDF)" />
+              </div>
             : <p className="text-sm text-red-700">No se pudo emitir: {resultado.error}</p>}
         </div>
       )}

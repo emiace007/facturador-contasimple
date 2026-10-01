@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, setComercioElegido } from '../lib/api';
 import { boton, card, input } from '../components/Aviso';
 import UsuariosPanel from '../components/UsuariosPanel';
+import DatosComercioPanel from '../components/DatosComercioPanel';
 
 export default function ComerciosPage() {
   const qc = useQueryClient();
@@ -13,7 +14,8 @@ export default function ComerciosPage() {
     mutationFn: () => api.crearComercio({ ...f, cuit: f.cuit.replace(/\D/g, ''), puntoVenta: f.puntoVenta ? Number(f.puntoVenta) : null }),
     onSuccess: () => { setF({ ...f, razonSocial: '', cuit: '', puntoVenta: '', emailDueno: '', passwordDueno: '' }); qc.invalidateQueries({ queryKey: ['comercios'] }); },
   });
-  const [abierto, setAbierto] = useState<string | null>(null);
+  const [abierto, setAbierto] = useState<{ id: string; panel: 'usuarios' | 'datos' } | null>(null);
+  const toggle = (id: string, panel: 'usuarios' | 'datos') => setAbierto(abierto?.id === id && abierto.panel === panel ? null : { id, panel });
   const ok = f.razonSocial.trim() && f.cuit.replace(/\D/g, '').length === 11 && f.emailDueno.includes('@') && f.passwordDueno.length >= 8;
   return (
     <div className="space-y-4">
@@ -40,14 +42,18 @@ export default function ComerciosPage() {
           <div key={c.id} className="px-5 py-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div><p className="text-sm font-medium text-slate-800">{c.razon_social}</p>
-                <p className="text-xs text-slate-500">CUIT {c.cuit}, {c.condicion_fiscal === 'monotributo' ? 'Monotributo' : 'Resp. Inscripto'}, punto de venta {c.punto_venta ?? 'sin definir'}</p></div>
+                <p className="text-xs text-slate-500">CUIT {c.cuit}, {c.condicion_fiscal === 'monotributo' ? 'Monotributo' : 'Resp. Inscripto'}, punto de venta {c.punto_venta ?? 'sin definir'}</p>
+                {!c.domicilio && <p className="text-xs text-amber-700">Faltan los datos para la factura (domicilio, IIBB, inicio de actividades).</p>}</div>
               <div className="flex items-center gap-4 text-sm">
-                <button className="text-brand-700 hover:underline" aria-expanded={abierto === c.id}
-                  onClick={() => setAbierto(abierto === c.id ? null : c.id)}>{abierto === c.id ? 'Ocultar usuarios' : 'Usuarios'}</button>
+                <button className="text-brand-700 hover:underline" aria-expanded={abierto?.id === c.id && abierto.panel === 'datos'}
+                  onClick={() => toggle(c.id, 'datos')}>Datos</button>
+                <button className="text-brand-700 hover:underline" aria-expanded={abierto?.id === c.id && abierto.panel === 'usuarios'}
+                  onClick={() => toggle(c.id, 'usuarios')}>{abierto?.id === c.id && abierto.panel === 'usuarios' ? 'Ocultar usuarios' : 'Usuarios'}</button>
                 <button className="text-brand-700 hover:underline" onClick={() => { setComercioElegido(c.id); window.location.href = '/facturar'; }}>Facturar por este comercio</button>
               </div>
             </div>
-            {abierto === c.id && <div className="mt-3"><UsuariosPanel comercioId={c.id} esEstudio /></div>}
+            {abierto?.id === c.id && abierto.panel === 'usuarios' && <div className="mt-3"><UsuariosPanel comercioId={c.id} esEstudio /></div>}
+            {abierto?.id === c.id && abierto.panel === 'datos' && <div className="mt-3"><DatosComercioPanel comercio={c} onListo={() => setAbierto(null)} /></div>}
           </div>
         ))}
       </div>

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api, numeroFactura } from '../lib/api';
 import { formatMonto } from '../lib/format';
 import { card, ConComercio } from '../components/Aviso';
+import PdfBoton from '../components/PdfBoton';
 
 export default function FacturasPage() {
   return <ConComercio>{(c) => <Lista id={c.id} />}</ConComercio>;
@@ -28,9 +29,12 @@ function Lista({ id }: { id: string }) {
                 {f.estado === 'error' && <span className="text-red-600"> · {f.error}</span>}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm tabular-nums">{formatMonto(f.importe_total)}</p>
-              <p className={'text-xs ' + (f.estado === 'emitida' ? 'text-green-600' : f.estado === 'error' ? 'text-red-600' : 'text-amber-600')}>{f.estado}</p>
+            <div className="flex items-center gap-4">
+              {f.estado === 'emitida' && <PdfBoton id={f.id} />}
+              <div className="text-right">
+                <p className="text-sm tabular-nums">{formatMonto(f.importe_total)}</p>
+                <p className={'text-xs ' + (f.estado === 'emitida' ? 'text-green-600' : f.estado === 'error' ? 'text-red-600' : 'text-amber-600')}>{f.estado}</p>
+              </div>
             </div>
           </div>
         ))}
