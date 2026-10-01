@@ -11,6 +11,8 @@ create table comercios (
   categoria_monotributo text,                       -- A..K, solo monotributo
   punto_venta int,                                   -- PV por defecto
   domicilio text,
+  iibb text,                                         -- N° de Ingresos Brutos (sale en la factura)
+  inicio_actividades date,
   delegacion_estado text not null default 'pendiente'
     check (delegacion_estado in ('pendiente','verificada','error')),
   delegacion_verificada_en timestamptz,
