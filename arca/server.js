@@ -65,7 +65,7 @@ const crearApp = ({ emisor } = {}) => {
   }));
 
   app.get('/api/comercios', requireAuth, soloStaff, wrap(async (_req, res) => {
-    const data = await conTxGlobal(async (c) => (await c.query('select id, razon_social, cuit, condicion_fiscal, punto_venta, domicilio, iibb, inicio_actividades, categoria_monotributo, delegacion_estado, activo from comercios order by razon_social')).rows);
+    const data = await conTxGlobal(async (c) => (await c.query('select id, razon_social, nombre_fantasia, cuit, condicion_fiscal, punto_venta, domicilio, iibb, inicio_actividades, categoria_monotributo, alicuota_default, delegacion_estado, activo from comercios order by razon_social')).rows);
     res.json({ ok: true, data });
   }));
 
@@ -76,17 +76,19 @@ const crearApp = ({ emisor } = {}) => {
     const txt = (v) => (v == null || String(v).trim() === '' ? null : String(v).trim().slice(0, 300));
     if (b.razonSocial !== undefined && !txt(b.razonSocial)) return res.status(400).json({ ok: false, error: 'Falta la razón social.' });
     if (b.inicioActividades && !/^\d{4}-\d{2}-\d{2}$/.test(b.inicioActividades)) return res.status(400).json({ ok: false, error: 'Fecha de inicio inválida.' });
+    if (b.alicuotaDefault != null && b.alicuotaDefault !== '' && ![0, 10.5, 21, 27].includes(Number(b.alicuotaDefault))) return res.status(400).json({ ok: false, error: 'Alícuota inválida.' });
     if (b.puntoVenta != null && b.puntoVenta !== '' && !(Number.isInteger(Number(b.puntoVenta)) && Number(b.puntoVenta) > 0)) return res.status(400).json({ ok: false, error: 'Punto de venta inválido.' });
     const data = await conTxGlobal(async (c) => {
       const { rows } = await c.query(
         `update comercios set
            razon_social = coalesce($2, razon_social),
            domicilio = $3, iibb = $4, inicio_actividades = $5::date, categoria_monotributo = $6,
-           punto_venta = coalesce($7, punto_venta)
+           punto_venta = coalesce($7, punto_venta), nombre_fantasia = $8, alicuota_default = $9
          where id = $1
-         returning id, razon_social, cuit, condicion_fiscal, punto_venta, domicilio, iibb, inicio_actividades, categoria_monotributo, delegacion_estado, activo`,
+         returning id, razon_social, nombre_fantasia, cuit, condicion_fiscal, punto_venta, domicilio, iibb, inicio_actividades, categoria_monotributo, alicuota_default, delegacion_estado, activo`,
         [req.params.id, txt(b.razonSocial), txt(b.domicilio), txt(b.iibb), b.inicioActividades || null, txt(b.categoriaMonotributo),
-         b.puntoVenta ? Number(b.puntoVenta) : null]);
+         b.puntoVenta ? Number(b.puntoVenta) : null, txt(b.nombreFantasia),
+         b.alicuotaDefault === '' || b.alicuotaDefault == null ? null : Number(b.alicuotaDefault)]);
       if (rows[0]) await c.query('insert into auditoria(usuario_id, comercio_id, accion) values ($1,$2,$3)', [req.user.id, rows[0].id, 'editar_comercio']);
       return rows[0];
     });
@@ -97,7 +99,7 @@ const crearApp = ({ emisor } = {}) => {
   // El comercio con el que se está trabajando (el del dueño, o el que eligió el estudio).
   app.get('/api/comercio', requireAuth, conComercio, wrap(async (req, res) => {
     const data = await conTxGlobal(async (c) => (await c.query(
-      'select id, razon_social, cuit, condicion_fiscal, punto_venta, domicilio, iibb, inicio_actividades, categoria_monotributo, delegacion_estado from comercios where id = $1 and activo', [req.comercioId])).rows[0]);
+      'select id, razon_social, nombre_fantasia, cuit, condicion_fiscal, punto_venta, domicilio, iibb, inicio_actividades, categoria_monotributo, alicuota_default, delegacion_estado from comercios where id = $1 and activo', [req.comercioId])).rows[0]);
     if (!data) return res.status(404).json({ ok: false, error: 'Comercio inexistente' });
     res.json({ ok: true, data });
   }));
@@ -126,6 +128,22 @@ const crearApp = ({ emisor } = {}) => {
     const data = await conTx(req.comercioId, async (c) => (await c.query(
       'select * from facturas order by creado_en desc limit $1', [Math.min(Number(req.query.limit) || 100, 500)])).rows);
     res.json({ ok: true, data });
+  }));
+
+  // Borrar una factura que NO se emitió (rechazada o trabada). Las emitidas tienen CAE: se anulan con nota de crédito.
+  app.post('/api/facturas/:id/borrar', requireAuth, conComercio, wrap(async (req, res) => {
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return res.status(400).json({ ok: false, error: 'Id inválido' });
+    const r = await conTx(req.comercioId, async (c) => {
+      const f = (await c.query('select id, estado, creado_en from facturas where id = $1', [req.params.id])).rows[0];
+      if (!f) return { status: 404, error: 'No existe' };
+      if (f.estado === 'emitida') return { status: 400, error: 'Una factura emitida no se puede borrar: ya está registrada en ARCA. Se anula con una nota de crédito.' };
+      if (f.estado === 'pendiente' && Date.now() - new Date(f.creado_en).getTime() < 5 * 60 * 1000) return { status: 400, error: 'Esta factura se está enviando a ARCA. Esperá unos minutos.' };
+      await c.query('delete from facturas where id = $1', [f.id]);
+      await c.query('insert into auditoria(usuario_id, comercio_id, accion, detalle) values ($1,$2,$3,$4)', [req.user.id, req.comercioId, 'borrar_factura_no_emitida', { factura: f.id, estado: f.estado }]);
+      return { ok: true };
+    });
+    if (!r.ok) return res.status(r.status).json({ ok: false, error: r.error });
+    res.json({ ok: true });
   }));
 
   // PDF de una factura emitida, con el QR de ARCA.
