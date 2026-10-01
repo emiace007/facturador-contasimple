@@ -131,12 +131,12 @@ begin
   end loop;
 end $$;
 
--- Tablas sin comercio_id (usuarios, sesiones, comercios, auditoria): RLS activado y solo las ve el rol de la app.
+-- Tablas sin comercio_id (usuarios, sesiones, comercios, auditoria, factura_items): RLS activado y solo las ve el rol de la app.
 -- Sin esto, la API pública de Supabase (clave anon) podría leer contraseñas y sesiones.
 do $$
 declare t text;
 begin
-  foreach t in array array['comercios','usuarios','sesiones','auditoria'] loop
+  foreach t in array array['comercios','usuarios','sesiones','auditoria','factura_items'] loop
     execute format('alter table %I enable row level security', t);
     execute format('create policy solo_app on %I to app_user using (true) with check (true)', t);
   end loop;
