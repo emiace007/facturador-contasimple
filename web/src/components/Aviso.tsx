@@ -10,5 +10,5 @@ export function ConComercio({ children }: { children: (c: Comercio) => React.Rea
 }
 
 export const card = 'bg-white rounded-2xl border border-slate-200/70 shadow-sm p-5';
-export const input = 'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm';
+export const input = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm';
 export const boton = 'rounded-xl bg-brand-600 text-white px-4 py-2 text-sm font-medium hover:bg-brand-700 disabled:opacity-50';
