@@ -77,7 +77,9 @@ async function generarPdf({ factura: f, items, comercio }) {
 
   // Emisor (izquierda)
   const izq = M + 12, anchoIzq = W / 2 - M - 40;
-  doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(14).text(comercio.razon_social, izq, top + 14, { width: anchoIzq });
+  const fantasia = comercio.nombre_fantasia && comercio.nombre_fantasia.trim();
+  doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(fantasia ? 15 : 14).text(fantasia || comercio.razon_social, izq, top + 12, { width: anchoIzq });
+  if (fantasia) doc.font('Helvetica').fontSize(9).fillColor(gris).text(comercio.razon_social, izq, doc.y + 1, { width: anchoIzq });
   doc.font('Helvetica').fontSize(8.5).fillColor(gris);
   let y = Math.max(doc.y + 8, top + 58);
   const fila = (k, v, x, w) => {
