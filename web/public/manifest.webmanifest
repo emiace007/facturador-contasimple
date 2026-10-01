@@ -1,13 +1,13 @@
 {
-  "name": "Facturador Contasimple",
-  "short_name": "Contasimple",
+  "name": "ContaSimple Facturador",
+  "short_name": "ContaSimple",
   "description": "Facturación electrónica para comercios.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f4f8f1",
-  "theme_color": "#4d6746",
+  "background_color": "#f8fafc",
+  "theme_color": "#345bb6",
   "lang": "es-AR",
   "icons": [
     {
