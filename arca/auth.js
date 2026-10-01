@@ -55,7 +55,8 @@ async function requireAuth(req, res, next) {
       return rows[0];
     });
     if (!user) return res.status(401).json({ ok: false, error: 'Sesión vencida' });
-    req.user = { id: user.id, rol: user.rol };
+    req.user = { id: user.id, rol: user.rol, comercioId: user.comercio_id };
+    req.tokenHash = sha(m[1]);
     req.comercioId = user.rol === 'staff' ? req.header('x-comercio-id') || null : user.comercio_id;
     next();
   } catch (e) {
@@ -69,4 +70,4 @@ const soloStaff = (req, res, next) =>
 const conComercio = (req, res, next) =>
   req.comercioId ? next() : res.status(400).json({ ok: false, error: 'Falta elegir el comercio (x-comercio-id)' });
 
-module.exports = { hashPassword, login, requireAuth, soloStaff, conComercio };
+module.exports = { hashPassword, verificarPassword, login, requireAuth, soloStaff, conComercio };

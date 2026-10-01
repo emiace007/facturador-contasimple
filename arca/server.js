@@ -3,6 +3,7 @@ const config = require('./config');
 const { conTx, conTxGlobal } = require('./db');
 const { hashPassword, login, requireAuth, soloStaff, conComercio } = require('./auth');
 const { emitir } = require('./facturas');
+const { rutasUsuarios } = require('./usuarios');
 
 const crearApp = ({ emisor } = {}) => {
   const app = express();
@@ -38,6 +39,9 @@ const crearApp = ({ emisor } = {}) => {
     intentos.delete(k);
     res.json({ ok: true, data: s });
   }));
+
+  // --- Usuarios: cambiar la propia contraseña, salir, y alta/baja de usuarios de cada comercio ---
+  rutasUsuarios(app, wrap);
 
   // --- Comercios (solo el estudio) ---
   app.post('/api/comercios', requireAuth, soloStaff, wrap(async (req, res) => {
