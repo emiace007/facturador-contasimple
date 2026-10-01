@@ -32,5 +32,7 @@ Se vende a varios comercios; el estudio factura **por cuenta de cada comercio** 
 - `arca/`: backend con login, comercios, productos, facturas y lotes sobre Postgres. `npm test` = prueba de punta a punta con ARCA **simulado** (necesita `DATABASE_URL` de una base local con el esquema). `test/dev-server.js` levanta el backend con ARCA simulado para probar la pantalla.
 - `web/`: app nueva (login, comercios [estudio], facturar, carga masiva con Excel y columna Fecha, facturas, productos). Variable `VITE_API_URL` = URL del backend.
 - Variables del backend: `DATABASE_URL` (rol app_user), `CORS_ORIGIN`, `AFIP_ENV`, `AFIP_CERT_PEM`, `AFIP_KEY_PEM` (las mismas del estudio).
-- Pendiente: probar contra la base real de Supabase, probar ARCA en homologación, PDF de factura con QR, verificación de la delegación, subir a GitHub y publicar (Render + Netlify).
-- Nada publicado ni creado en GitHub/Netlify/Render todavía.
+- Usuarios (`arca/usuarios.js`): el estudio gestiona dueños y empleados de cualquier comercio (pantalla Comercios → Usuarios); el dueño gestiona sus empleados (pantalla Usuarios); todos cambian su contraseña en Mi cuenta. Desactivar o resetear clave cierra las sesiones de ese usuario.
+- Marca: logo ContaSimple, azul #345BB6 (brand-600) y amarillo #FAC43E (acento-400), tipografía Nunito Sans.
+- Publicado: backend en Render (facturador-contasimple-api.onrender.com, homologación) y web en Netlify (facturador-contasimple.netlify.app). Base en Supabase.
+- Pendiente: probar ARCA en homologación, PDF de factura con QR, verificación de la delegación, cobro a comercios, resumen de ventas y tope de monotributo.
