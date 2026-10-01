@@ -142,28 +142,47 @@ export const api = {
   miComercio: async () => (await request<{ data: Comercio }>('GET', '/api/comercio')).data,
   comercios: async () => (await request<{ data: Comercio[] }>('GET', '/api/comercios')).data,
   editarComercio: async (id: string, d: DatosComercio) => (await request<{ data: Comercio }>('POST', `/api/comercios/${id}`, d)).data,
-  /** Abre el PDF de la factura en otra pestaña (la ventana se abre antes para que no la bloquee el navegador). */
+  /** Descarga el PDF de una factura emitida. */
+  pdfBlob: async (id: string): Promise<Blob> => {
+    const s = getSesion();
+    const headers: Record<string, string> = {};
+    if (s) headers.Authorization = `Bearer ${s.token}`;
+    const c = getComercioElegido();
+    if (s?.rol === 'staff' && c) headers['x-comercio-id'] = c;
+    let res: Response;
+    try { res = await fetch(`${API_URL}/api/facturas/${id}/pdf`, { headers }); }
+    catch { throw new ApiError('No se pudo conectar con el servidor. Probá de nuevo en un momento.', 0); }
+    if (!res.ok) throw new ApiError((await res.json().catch(() => ({}))).error || `Error ${res.status}`, res.status);
+    return res.blob();
+  },
+  /** Abre el PDF en otra pestaña (la ventana se abre antes para que el navegador no la bloquee). */
   abrirPdf: async (id: string) => {
     const w = window.open('', '_blank');
     try {
-      const s = getSesion();
-      const headers: Record<string, string> = {};
-      if (s) headers.Authorization = `Bearer ${s.token}`;
-      const c = getComercioElegido();
-      if (s?.rol === 'staff' && c) headers['x-comercio-id'] = c;
-      const res = await fetch(`${API_URL}/api/facturas/${id}/pdf`, { headers });
-      if (!res.ok) throw new ApiError((await res.json().catch(() => ({}))).error || `Error ${res.status}`, res.status);
-      const url = URL.createObjectURL(await res.blob());
+      const url = URL.createObjectURL(await api.pdfBlob(id));
       if (w) w.location.href = url; else window.location.href = url;
     } catch (e) {
       w?.close();
       throw e;
     }
   },
+  /** Comparte el PDF (WhatsApp, mail…) con el menú del celular. Si el navegador no puede, lo descarga. */
+  compartirPdf: async (id: string, nombre: string) => {
+    const blob = await api.pdfBlob(id);
+    const file = new File([blob], `${nombre.replace(/[^\w-]+/g, '-')}.pdf`, { type: 'application/pdf' });
+    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+    if (nav.share && nav.canShare?.({ files: [file] })) {
+      try { await nav.share({ files: [file], title: nombre }); } catch (e) { if ((e as Error).name !== 'AbortError') throw e; }
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+  },
   crearComercio: async (d: Record<string, unknown>) => (await request<{ data: Comercio }>('POST', '/api/comercios', d)).data,
   productos: async () => (await request<{ data: Producto[] }>('GET', '/api/productos')).data,
   crearProducto: async (d: { nombre: string; precio: number; alicuotaIva: number; esServicio: boolean }) =>
     (await request<{ data: Producto }>('POST', '/api/productos', d)).data,
+  resumen: async () => (await request<{ data: { hoy_total: string; hoy_cantidad: number; mes_total: string; mes_cantidad: number } }>('GET', '/api/resumen')).data,
   facturas: async () => (await request<{ data: Factura[] }>('GET', '/api/facturas')).data,
   facturar: async (d: DatosFactura) => (await request<{ data: Factura }>('POST', '/api/facturas', d)).data,
   crearLote: async (archivo: string, facturas: DatosFactura[]) =>
