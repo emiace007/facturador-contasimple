@@ -8,6 +8,8 @@ export default function DatosComercioPanel({ comercio: c, onListo }: { comercio:
   const qc = useQueryClient();
   const [f, setF] = useState({
     razonSocial: c.razon_social,
+    nombreFantasia: c.nombre_fantasia ?? '',
+    alicuotaDefault: c.alicuota_default != null ? String(Number(c.alicuota_default)) : '',
     domicilio: c.domicilio ?? '',
     iibb: c.iibb ?? '',
     inicioActividades: c.inicio_actividades ? c.inicio_actividades.slice(0, 10) : '',
@@ -23,11 +25,22 @@ export default function DatosComercioPanel({ comercio: c, onListo }: { comercio:
   return (
     <div className="grid gap-3 sm:grid-cols-2 rounded-xl border border-slate-200/70 bg-slate-50 p-4">
       <p className="sm:col-span-2 text-xs text-slate-500">Estos datos salen impresos en las facturas. Copialos de la constancia de inscripción.</p>
-      <label className="text-xs text-slate-500 sm:col-span-2">Razón social<input className={input} value={f.razonSocial} onChange={set('razonSocial')} /></label>
+      <label className="text-xs text-slate-500">Razón social<input className={input} value={f.razonSocial} onChange={set('razonSocial')} /></label>
+      <label className="text-xs text-slate-500">Nombre del local (opcional)<input className={input} placeholder="Ej.: Verdulería Don José" value={f.nombreFantasia} onChange={set('nombreFantasia')} /></label>
       <label className="text-xs text-slate-500 sm:col-span-2">Domicilio comercial<input className={input} placeholder="Calle 123, Localidad" value={f.domicilio} onChange={set('domicilio')} /></label>
       <label className="text-xs text-slate-500">N° de Ingresos Brutos<input className={input} placeholder="Si lo dejás vacío se usa el CUIT" value={f.iibb} onChange={set('iibb')} /></label>
       <label className="text-xs text-slate-500">Inicio de actividades<input type="date" className={input} value={f.inicioActividades} onChange={set('inicioActividades')} /></label>
       <label className="text-xs text-slate-500">Punto de venta<input className={input} inputMode="numeric" value={f.puntoVenta} onChange={set('puntoVenta')} /></label>
+      {!mono && (
+        <label className="text-xs text-slate-500">IVA que se usa normalmente
+          <select className={input} value={f.alicuotaDefault} onChange={set('alicuotaDefault')}>
+            <option value="">21% (general)</option>
+            <option value="10.5">10,5%</option>
+            <option value="27">27%</option>
+            <option value="0">0%</option>
+          </select>
+        </label>
+      )}
       {mono && (
         <label className="text-xs text-slate-500">Categoría de monotributo
           <select className={input} value={f.categoriaMonotributo} onChange={set('categoriaMonotributo')}>
