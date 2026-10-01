@@ -3,7 +3,7 @@ import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, FileText, Home, Layers, LogOut, Menu, Package, Plus, UserCircle, Users } from 'lucide-react';
 import clsx from 'clsx';
-import { api, getComercioElegido, getSesion, setComercioElegido, setSesion, type Comercio, type Sesion } from './lib/api';
+import { api, nombreComercio, getComercioElegido, getSesion, setComercioElegido, setSesion, type Comercio, type Sesion } from './lib/api';
 import LoginPage from './pages/LoginPage';
 import InicioPage from './pages/InicioPage';
 import FacturarPage from './pages/FacturarPage';
@@ -107,7 +107,7 @@ function BarraSuperior({ esStaff }: { esStaff: boolean }) {
         <img src="/logo.png" alt="ContaSimple" className="h-6 w-auto md:hidden" />
         <div className="ml-auto md:ml-0 min-w-0 flex items-center gap-2">
           {esStaff ? <SelectorComercio /> : comercio && (
-            <span className="truncate text-sm font-semibold text-white md:hidden">{comercio.razon_social}</span>
+            <span className="truncate text-sm font-semibold text-white md:hidden">{nombreComercio(comercio)}</span>
           )}
         </div>
       </div>
@@ -126,7 +126,7 @@ function SelectorComercio() {
         className="min-w-0 max-w-[60vw] md:max-w-xs h-10 rounded-xl border border-white/30 md:border-slate-300 bg-white/10 md:bg-white px-3 text-sm font-semibold text-white md:text-slate-800 [&>option]:text-slate-900"
         onChange={(e) => { setComercioElegido(e.target.value || null); qc.invalidateQueries(); window.location.reload(); }}>
         <option value="">Elegí un comercio</option>
-        {(q.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
+        {(q.data ?? []).map((c) => <option key={c.id} value={c.id}>{nombreComercio(c)}</option>)}
       </select>
     </label>
   );
