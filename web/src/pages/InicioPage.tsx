@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Layers, Package, Plus } from 'lucide-react';
-import { api, type Comercio } from '../lib/api';
+import { api, nombreComercio, type Comercio } from '../lib/api';
 import { formatMonto } from '../lib/format';
 import { botonGrande, ConComercio } from '../components/Aviso';
 import { FilaFactura } from './FacturasPage';
@@ -23,7 +23,7 @@ function Inicio({ comercio }: { comercio: Comercio }) {
 
   return (
     <div className="space-y-5 md:space-y-6">
-      <h1 className="text-2xl md:text-3xl font-extrabold text-brand-950 leading-tight">{comercio.razon_social}</h1>
+      <h1 className="text-2xl md:text-3xl font-extrabold text-brand-950 leading-tight">{nombreComercio(comercio)}</h1>
 
       <section className="rounded-3xl bg-brand-600 text-white p-5 md:p-7 relative overflow-hidden" aria-label="Ventas">
         <div aria-hidden className="absolute -right-14 -top-16 h-40 w-40 rounded-full border-[18px] border-acento-400/80" />

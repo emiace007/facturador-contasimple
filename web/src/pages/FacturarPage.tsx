@@ -39,7 +39,13 @@ function Caja({ comercio }: { comercio: Comercio }) {
   const [condIva, setCondIva] = useState(condicionIvaSugerida(tipos[0], true));
   const [concepto, setConcepto] = useState(1);
   const [ptoVta, setPtoVta] = useState(String(comercio.punto_venta ?? ''));
-  const [alicuota, setAlicuota] = useState(21);
+  const claveIva = `facturador:alicuota:${comercio.id}`;
+  const [alicuota, setAlicuotaEstado] = useState<number>(() => {
+    const guardada = localStorage.getItem(claveIva);
+    if (guardada !== null && [0, 10.5, 21, 27].includes(Number(guardada))) return Number(guardada);
+    return comercio.alicuota_default != null ? Number(comercio.alicuota_default) : 21;
+  });
+  const setAlicuota = (a: number) => { setAlicuotaEstado(a); try { localStorage.setItem(claveIva, String(a)); } catch { /* sin almacenamiento */ } };
   const [fecha, setFecha] = useState(hoyIso());
   const [opciones, setOpciones] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
@@ -118,9 +124,9 @@ function Caja({ comercio }: { comercio: Comercio }) {
         {/* Visor del importe */}
         <section className="rounded-3xl bg-brand-600 text-white px-5 pt-3 pb-4 md:pt-4 md:pb-5" aria-live="polite">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-base text-brand-100">{TIPOS[cbteTipo]}</span>
+            <span className="text-base text-brand-100">{TIPOS[cbteTipo]}{cbteTipo !== 11 && ` (IVA ${String(alicuota).replace('.', ',')}%)`}</span>
             {(tecleado || lineas.length > 0) && (
-              <button onClick={() => { setTecleado(''); setLineas([]); }} className="inline-flex items-center gap-1 h-9 px-3 rounded-full bg-white/15 text-sm font-bold">
+              <button onClick={() => { setTecleado(''); setLineas([]); }} className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 h-9 px-3 rounded-full bg-white/15 text-sm font-bold">
                 <X size={16} /> Borrar todo
               </button>
             )}
@@ -130,6 +136,22 @@ function Caja({ comercio }: { comercio: Comercio }) {
           </p>
           {lineas.length > 0 && libre > 0 && <p className="mt-2 text-sm text-brand-100">Incluye {mostrarTecleado(tecleado)} cargado a mano</p>}
         </section>
+
+        {/* IVA a la vista (Responsable Inscripto): queda recordado para la próxima */}
+        {cbteTipo !== 11 && (
+          <section className="flex items-center gap-2" aria-label="IVA">
+            <span className="text-sm font-bold text-brand-900 shrink-0">IVA</span>
+            <div className="grid grid-cols-4 gap-1.5 flex-1" role="radiogroup">
+              {[21, 10.5, 27, 0].map((a) => (
+                <button key={a} role="radio" aria-checked={alicuota === a} onClick={() => setAlicuota(a)}
+                  className={clsx('h-12 rounded-xl border-2 text-base font-extrabold tabular-nums',
+                    alicuota === a ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-brand-900')}>
+                  {String(a).replace('.', ',')}%
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Productos para tocar */}
         {prods.length > 0 && (
@@ -229,13 +251,6 @@ function Caja({ comercio }: { comercio: Comercio }) {
               <label className={label}>Punto de venta
                 <input className={input} inputMode="numeric" value={ptoVta} onChange={(e) => setPtoVta(e.target.value.replace(/\D/g, ''))} />
               </label>
-              {cbteTipo !== 11 && (
-                <label className={label}>IVA
-                  <select className={input} value={alicuota} onChange={(e) => setAlicuota(Number(e.target.value))}>
-                    {[21, 10.5, 27, 0].map((a) => <option key={a} value={a}>{String(a).replace('.', ',')}% (incluido en el precio)</option>)}
-                  </select>
-                </label>
-              )}
             </div>
           )}
         </section>
@@ -258,7 +273,7 @@ function Caja({ comercio }: { comercio: Comercio }) {
 
       {confirmar && (
         <Confirmacion
-          tipo={TIPOS[cbteTipo]} total={total}
+          tipo={TIPOS[cbteTipo] + (cbteTipo !== 11 ? ` (IVA ${String(alicuota).replace('.', ',')}%)` : '')} total={total}
           cliente={cf && !esA ? 'Consumidor final' : `${nombre.trim() || (docLimpio.length === 11 ? 'CUIT' : 'DNI')} ${docLimpio}`}
           emitiendo={m.isPending} onSi={() => m.mutate()} onNo={() => setConfirmar(false)} />
       )}

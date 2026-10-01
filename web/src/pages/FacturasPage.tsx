@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { api, numeroFactura, TIPOS, type Factura } from '../lib/api';
 import { formatMonto } from '../lib/format';
@@ -47,7 +48,12 @@ export function FilaFactura({ f }: { f: Factura }) {
           </span>
         </div>
       </div>
-      {f.estado === 'error' && <p className="mt-2 text-sm text-red-700">{f.error}</p>}
+      {f.estado === 'error' && (
+        <>
+          <p className="mt-2 text-sm text-red-700 break-words">{f.error}</p>
+          <BorrarFactura id={f.id} />
+        </>
+      )}
       {f.estado === 'emitida' && (
         <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
           <p className="text-xs text-slate-400 tabular-nums">CAE {f.cae}</p>
@@ -55,6 +61,34 @@ export function FilaFactura({ f }: { f: Factura }) {
         </div>
       )}
     </article>
+  );
+}
+
+/** Borra una factura que ARCA no aceptó (no tiene validez, así que no hace falta nota de crédito). */
+function BorrarFactura({ id }: { id: string }) {
+  const qc = useQueryClient();
+  const [seguro, setSeguro] = useState(false);
+  const m = useMutation({
+    mutationFn: () => api.borrarFactura(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['facturas'] }); qc.invalidateQueries({ queryKey: ['resumen'] }); },
+  });
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+      {m.error && <p className="text-sm text-red-600 w-full text-right">{(m.error as Error).message}</p>}
+      {!seguro ? (
+        <button onClick={() => setSeguro(true)} className="inline-flex items-center gap-1.5 h-11 px-4 rounded-xl bg-red-50 text-red-700 text-sm font-bold active:bg-red-100">
+          <Trash2 size={18} /> Borrar
+        </button>
+      ) : (
+        <>
+          <span className="text-sm text-slate-600">¿Borrar esta factura con error?</span>
+          <button onClick={() => setSeguro(false)} className="h-11 px-4 rounded-xl bg-slate-100 text-slate-700 text-sm font-bold">No</button>
+          <button onClick={() => m.mutate()} disabled={m.isPending} className="h-11 px-4 rounded-xl bg-red-600 text-white text-sm font-bold disabled:opacity-50">
+            {m.isPending ? 'Borrando…' : 'Sí, borrar'}
+          </button>
+        </>
+      )}
+    </div>
   );
 }
 
