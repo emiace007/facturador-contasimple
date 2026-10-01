@@ -15,6 +15,18 @@ export interface Comercio {
   punto_venta: number | null;
   delegacion_estado?: string;
   activo?: boolean;
+  domicilio?: string | null;
+  iibb?: string | null;
+  inicio_actividades?: string | null;
+  categoria_monotributo?: string | null;
+}
+export interface DatosComercio {
+  razonSocial: string;
+  domicilio: string;
+  iibb: string;
+  inicioActividades: string;
+  categoriaMonotributo: string;
+  puntoVenta: string;
 }
 export interface Usuario {
   id: string;
@@ -129,6 +141,25 @@ export const api = {
   claveUsuario: async (id: string, password: string) => { await request('POST', `/api/usuarios/${id}/password`, { password }); },
   miComercio: async () => (await request<{ data: Comercio }>('GET', '/api/comercio')).data,
   comercios: async () => (await request<{ data: Comercio[] }>('GET', '/api/comercios')).data,
+  editarComercio: async (id: string, d: DatosComercio) => (await request<{ data: Comercio }>('POST', `/api/comercios/${id}`, d)).data,
+  /** Abre el PDF de la factura en otra pestaña (la ventana se abre antes para que no la bloquee el navegador). */
+  abrirPdf: async (id: string) => {
+    const w = window.open('', '_blank');
+    try {
+      const s = getSesion();
+      const headers: Record<string, string> = {};
+      if (s) headers.Authorization = `Bearer ${s.token}`;
+      const c = getComercioElegido();
+      if (s?.rol === 'staff' && c) headers['x-comercio-id'] = c;
+      const res = await fetch(`${API_URL}/api/facturas/${id}/pdf`, { headers });
+      if (!res.ok) throw new ApiError((await res.json().catch(() => ({}))).error || `Error ${res.status}`, res.status);
+      const url = URL.createObjectURL(await res.blob());
+      if (w) w.location.href = url; else window.location.href = url;
+    } catch (e) {
+      w?.close();
+      throw e;
+    }
+  },
   crearComercio: async (d: Record<string, unknown>) => (await request<{ data: Comercio }>('POST', '/api/comercios', d)).data,
   productos: async () => (await request<{ data: Producto[] }>('GET', '/api/productos')).data,
   crearProducto: async (d: { nombre: string; precio: number; alicuotaIva: number; esServicio: boolean }) =>
