@@ -145,6 +145,20 @@ const crearApp = ({ emisor } = {}) => {
     res.send(pdf);
   }));
 
+  // Resumen de ventas para la pantalla de inicio (hoy y mes en curso, hora de Argentina).
+  app.get('/api/resumen', requireAuth, conComercio, wrap(async (req, res) => {
+    const data = await conTx(req.comercioId, async (c) => (await c.query(
+      `with hoy as (select (now() at time zone 'America/Argentina/Buenos_Aires')::date d)
+       select
+         coalesce(sum(importe_total) filter (where fecha_comprobante = hoy.d), 0)::text as hoy_total,
+         count(*) filter (where fecha_comprobante = hoy.d)::int as hoy_cantidad,
+         coalesce(sum(importe_total) filter (where date_trunc('month', fecha_comprobante) = date_trunc('month', hoy.d)), 0)::text as mes_total,
+         count(*) filter (where date_trunc('month', fecha_comprobante) = date_trunc('month', hoy.d))::int as mes_cantidad
+       from hoy left join facturas f on f.estado = 'emitida' and f.fecha_comprobante >= date_trunc('month', hoy.d) - interval '10 days'
+       group by hoy.d`)).rows[0]);
+    res.json({ ok: true, data });
+  }));
+
   // --- Carga masiva: se crea el lote y se emite una por una en segundo plano ---
   app.post('/api/lotes', requireAuth, conComercio, wrap(async (req, res) => {
     const filas = Array.isArray(req.body && req.body.facturas) ? req.body.facturas : [];
