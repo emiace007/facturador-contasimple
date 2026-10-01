@@ -1,343 +1,137 @@
-import type {
-  AdminSession,
-  ApiResponse,
-  Cliente,
-  CrearColaboradorInput,
-  CrearColaboradorResult,
-  FacturacionCliente,
-  FacturaAfipInput,
-  FacturaAfipResult,
-  FacturaEmitida,
-  FacturaExtra,
-  FacturaPdfArchivo,
-  Ganancia,
-  PortalFacturaRow,
-  PortalResumen,
-  PortalSession,
-  QuickLink,
-  Recategorizacion,
-  Sociedad,
-  Sueldo,
-  Tarea,
-  UltimaFacturaAfip,
-  Vencimiento,
-} from '../types';
-import { clearAdminSession, getAdminSession } from './adminSession';
-import type { ComprobanteGuardado, EstadoImportacion, FacturacionRI, ResultadoImportacion } from '../types/comprobantes';
-import type { ComprobanteArca } from './misComprobantes';
-import type {
-  AbonoInput,
-  ConfigHonorarios,
-  HonorariosPortal,
-  MovimientoInput,
-  ResultadoGenerarCargos,
-  ResumenHonorarios,
-} from '../types/honorarios';
-import type { BalanceCliente, EgresoInput } from '../types/egresos';
+// Cliente del backend (Node). Todas las llamadas llevan el token de sesión.
+const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:3000';
 
-/** Datos de una persona según la constancia de inscripción de ARCA (padrón A5). */
-export interface PersonaPadron {
+export interface Sesion {
+  token: string;
+  rol: 'staff' | 'dueno' | 'empleado';
+  comercioId: string | null;
+  email?: string;
+}
+export interface Comercio {
+  id: string;
+  razon_social: string;
   cuit: string;
-  tipoPersona: string;
-  denominacion: string;
-  apellido: string;
+  condicion_fiscal: 'monotributo' | 'responsable_inscripto';
+  punto_venta: number | null;
+  delegacion_estado?: string;
+  activo?: boolean;
+}
+export interface Producto {
+  id: string;
   nombre: string;
-  razonSocial: string;
-  estadoClave: string;
-  domicilio: { direccion: string; localidad: string; codigoPostal: string; provincia: string };
-  condicionIva: string;
-  condicionIvaId: number;
-  categoriaMonotributo: string;
-  impuestos: { id: number; descripcion: string }[];
-  actividadPrincipal: string;
-  observaciones: string[];
+  precio: string;
+  alicuota_iva: string;
+  es_servicio: boolean;
+}
+export interface Factura {
+  id: string;
+  cbte_tipo: number;
+  punto_venta: number;
+  numero: string | null;
+  fecha_comprobante: string;
+  doc_tipo: number;
+  doc_nro: string;
+  receptor_nombre: string | null;
+  importe_total: string;
+  estado: 'pendiente' | 'emitida' | 'error';
+  cae: string | null;
+  error: string | null;
+  lote_id: string | null;
+}
+export interface DatosFactura {
+  cbteTipo?: number;
+  ptoVta?: number;
+  concepto?: number;
+  docTipo?: number;
+  docNro?: string;
+  importe: number;
+  alicuotaIva?: number;
+  condicionIvaReceptorId?: number;
+  receptorNombre?: string;
+  fechaComprobante?: string;
+  items?: { productoId?: string; descripcion: string; cantidad: number; precioUnitario: number }[];
 }
 
-const BASE_URL = import.meta.env.VITE_APPS_SCRIPT_URL as string | undefined;
-const API_KEY = import.meta.env.VITE_APPS_SCRIPT_API_KEY as string | undefined;
+const KEY = 'facturador:sesion';
+const KEY_COMERCIO = 'facturador:comercio';
 
-/**
- * Cliente HTTP hacia el Web App de Google Apps Script.
- *
- * Detalles no obvios:
- * - Las lecturas van por GET con querystring (no dispara CORS preflight).
- * - Las escrituras van por POST con Content-Type "text/plain;charset=utf-8"
- *   en vez de "application/json": así el navegador lo trata como solicitud
- *   simple y evita el preflight OPTIONS, que Apps Script no sabe responder.
- *   El body sigue siendo JSON válido; Apps Script lo parsea igual en doPost.
- */
-/** Token de la sesión del equipo interno (vacío en el portal de clientes). */
-function adminToken(): string {
-  return getAdminSession()?.token ?? '';
+export function getSesion(): Sesion | null {
+  try {
+    const raw = localStorage.getItem(KEY);
+    return raw ? (JSON.parse(raw) as Sesion) : null;
+  } catch {
+    return null;
+  }
+}
+export function setSesion(s: Sesion | null) {
+  if (s) localStorage.setItem(KEY, JSON.stringify(s));
+  else {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(KEY_COMERCIO);
+  }
+}
+/** Comercio elegido por el estudio (staff). Para el dueño de un comercio no hace falta: lo define su usuario. */
+export function getComercioElegido(): string | null {
+  return localStorage.getItem(KEY_COMERCIO);
+}
+export function setComercioElegido(id: string | null) {
+  if (id) localStorage.setItem(KEY_COMERCIO, id);
+  else localStorage.removeItem(KEY_COMERCIO);
 }
 
-async function request<T>(
-  action: string,
-  options?: { method?: 'GET' | 'POST'; body?: Record<string, unknown>; params?: Record<string, string> }
-): Promise<T> {
-  if (!BASE_URL) {
-    throw new Error(
-      'Falta VITE_APPS_SCRIPT_URL. Configurá frontend/.env a partir de .env.example.'
-    );
+export class ApiError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
   }
+}
 
-  const method = options?.method ?? 'GET';
-  let url = BASE_URL;
-  let init: RequestInit;
-
-  if (method === 'GET') {
-    const params = new URLSearchParams({
-      action,
-      apiKey: API_KEY ?? '',
-      adminToken: adminToken(),
-      ...(options?.params ?? {}),
-    });
-    url = `${BASE_URL}?${params.toString()}`;
-    init = { method: 'GET' };
-  } else {
-    init = {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ adminToken: adminToken(), ...options?.body, apiKey: API_KEY ?? '' }),
-    };
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const s = getSesion();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (s) headers.Authorization = `Bearer ${s.token}`;
+  if (s?.rol === 'staff') {
+    const c = getComercioElegido();
+    if (c) headers['x-comercio-id'] = c;
   }
-
-  const res = await fetch(url, init);
-  const json = (await res.json()) as ApiResponse<T>;
-
-  if (!json.ok) {
-    // Sesión de administrador vencida o inválida: se limpia y se vuelve al login.
-    if (json.error === 'No autorizado' && getAdminSession() && !window.location.pathname.startsWith('/portal')) {
-      clearAdminSession();
-      window.location.reload();
-    }
-    throw new Error(json.error ?? 'Error desconocido en la API');
+  let res: Response;
+  try {
+    res = await fetch(API_URL + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  } catch {
+    throw new ApiError('No se pudo conectar con el servidor. Probá de nuevo en un momento.', 0);
   }
-  return json.data as T;
+  const json = await res.json().catch(() => ({}));
+  if (res.status === 401 && s && path !== '/api/auth/login') {
+    setSesion(null);
+    window.location.reload();
+  }
+  // Una factura rechazada por ARCA devuelve 422 con el registro: se deja pasar para mostrar el motivo.
+  if (!res.ok && !(res.status === 422 && json.data)) throw new ApiError(json.error || `Error ${res.status}`, res.status);
+  return json as T;
 }
 
 export const api = {
-  getVencimientos: () => request<Vencimiento[]>('vencimientos'),
-  getTareas: () => request<Tarea[]>('tareas'),
-  getQuickLinks: () => request<QuickLink[]>('accesos'),
-  getClientes: () => request<Cliente[]>('clientes'),
-  getFacturacion: () => request<FacturacionCliente[]>('facturacion'),
-  getSociedades: () => request<Sociedad[]>('sociedades'),
-  getGanancias: () => request<Ganancia[]>('ganancias'),
-  getSueldos: () => request<Sueldo[]>('sueldos'),
-  getRecategorizaciones: () => request<Recategorizacion[]>('recategorizaciones'),
-
-  createCliente: (payload: {
-    cliente: string;
-    cuit: string;
-    encargado: string;
-    condicionFiscal: string;
-    actMensual: string;
-    observaciones: string;
-  }) =>
-    request<Cliente>('', {
-      method: 'POST',
-      body: { action: 'create', entity: 'cliente', payload },
-    }),
-
-  createVencimiento: (payload: Omit<Vencimiento, 'id'>) =>
-    request<Vencimiento>('', {
-      method: 'POST',
-      body: { action: 'create', entity: 'vencimiento', payload },
-    }),
-
-  updateVencimiento: (id: string, payload: Partial<Vencimiento>) =>
-    request<Vencimiento>('', {
-      method: 'POST',
-      body: { action: 'update', entity: 'vencimiento', id, payload },
-    }),
-
-  updateTareaEstado: (id: string, estado: Tarea['estado']) =>
-    request<Tarea>('', {
-      method: 'POST',
-      body: { action: 'update', entity: 'tarea', id, payload: { estado } },
-    }),
-
-  createTarea: (payload: Omit<Tarea, 'id'>) =>
-    request<Tarea>('', {
-      method: 'POST',
-      body: { action: 'create', entity: 'tarea', payload },
-    }),
-
-  updateTarea: (id: string, payload: Partial<Tarea>) =>
-    request<Tarea>('', {
-      method: 'POST',
-      body: { action: 'update', entity: 'tarea', id, payload },
-    }),
-
-  /** Último número de comprobante autorizado en ARCA (para saber qué número sigue). */
-  consultarUltimaFacturaAfip: (cuit: string, ptoVta: number, cbteTipo = 6) =>
-    request<UltimaFacturaAfip>('facturaUltima', {
-      method: 'GET',
-      params: { cuit, ptoVta: String(ptoVta), cbteTipo: String(cbteTipo) },
-    }),
-
-  /** Pide el CAE (emite la factura real) contra ARCA/WSFE, vía el backend AFIP. */
-  emitirFacturaAfip: (payload: FacturaAfipInput, extra?: FacturaExtra) =>
-    request<FacturaAfipResult>('', {
-      method: 'POST',
-      body: { action: 'facturar', payload, extra: extra ?? {} },
-    }),
-
-  // --- Portal de Cliente ---
-  // Estas acciones NO usan la apiKey de administrador: se autentican con
-  // usuario/contraseña propios (loginPortal) o con el token de sesión que
-  // devuelve ese login (los demás). Ver Code.gs: loginCliente/clienteFacturar.
-
-  /** Login del cliente en su propio portal. Devuelve el token de sesión. */
-  loginPortal: (usuario: string, password: string) =>
-    request<PortalSession>('', {
-      method: 'POST',
-      body: { action: 'loginCliente', usuario, password },
-    }),
-
-  /** Facturación propia del cliente logueado (filtrada por su CUIT en el backend). */
-  getMisFacturasPortal: (token: string) =>
-    request<PortalFacturaRow[]>('clienteMisFacturas', {
-      method: 'GET',
-      params: { token },
-    }),
-
-  /**
-   * El cliente emite su propia factura real contra ARCA. No manda
-   * `cuitRepresentada`: el backend lo fuerza siempre al CUIT de su sesión.
-   */
-  facturarPortal: (token: string, payload: Omit<FacturaAfipInput, 'cuitRepresentada'>, extra?: FacturaExtra) =>
-    request<FacturaAfipResult>('', {
-      method: 'POST',
-      body: { action: 'clienteFacturar', token, payload, extra: extra ?? {} },
-    }),
-
-  /**
-   * Condición fiscal del cliente logueado en el portal y los tipos de factura
-   * que puede emitir (Monotributo: sólo C; Responsable Inscripto / SAS: A o B).
-   */
-  getPerfilPortal: (token: string) =>
-    request<{ categoriasFiscales: string; tiposPermitidos: number[] }>('', {
-      method: 'POST',
-      body: { action: 'perfilPortal', token },
-    }),
-
-  /** Historial de facturas emitidas (panel del estudio). */
-  getFacturasEmitidas: (cuit?: string) =>
-    request<FacturaEmitida[]>('', {
-      method: 'POST',
-      body: { action: 'facturasEmitidas', adminToken: getAdminSession()?.token ?? '', cuit: cuit ?? '' },
-    }),
-
-  /** PDF (base64 + link) de una factura del historial, desde el panel del estudio. */
-  getFacturaPdf: (id: string) =>
-    request<FacturaPdfArchivo>('', {
-      method: 'POST',
-      body: { action: 'facturaPdf', adminToken: getAdminSession()?.token ?? '', id },
-    }),
-
-  /** Resumen gráfico del portal: monitoreo, facturas emitidas, recategorización y vencimientos. */
-  getResumenPortal: (token: string) =>
-    request<PortalResumen>('', {
-      method: 'POST',
-      body: { action: 'clienteResumen', token },
-    }),
-
-  /** Facturas emitidas por el cliente logueado en el portal. */
-  getMisFacturasEmitidas: (token: string) =>
-    request<FacturaEmitida[]>('', {
-      method: 'POST',
-      body: { action: 'clienteFacturasEmitidas', token },
-    }),
-
-  /** PDF de una factura propia, desde el portal. */
-  getMiFacturaPdf: (token: string, id: string) =>
-    request<FacturaPdfArchivo>('', {
-      method: 'POST',
-      body: { action: 'clienteFacturaPdf', token, id },
-    }),
-
-  /** El cliente cambia su propia contraseña del portal. */
-  cambiarPasswordCliente: (token: string, passwordActual: string, passwordNueva: string) =>
-    request<void>('', {
-      method: 'POST',
-      body: { action: 'cambiarPasswordCliente', token, passwordActual, passwordNueva },
-    }),
-
-  /** Consulta el padrón de ARCA (constancia de inscripción) por CUIT. Solo equipo del estudio. */
-  consultarPadron: (cuit: string) =>
-    request<PersonaPadron>('', {
-      method: 'POST',
-      body: { action: 'padron', cuit: cuit.replace(/\D/g, '') },
-    }),
-
-  /** Uso interno (con apiKey de administrador): crea/reemplaza el acceso al portal de un cliente. */
-  crearColaborador: (payload: CrearColaboradorInput) =>
-    request<CrearColaboradorResult>('', {
-      method: 'POST',
-      body: { action: 'crearColaborador', payload },
-    }),
-
-  // --- Login de administrador (equipo interno del estudio) ---
-  // Reemplaza al PIN compartido de PinGate: cada persona tiene su propio
-  // usuario/contraseña. Ver loginAdmin/cambiarPasswordAdmin en Code.gs.
-
-  /** Login del equipo interno. Devuelve el token de sesión de administrador. */
-  loginAdmin: (usuario: string, password: string) =>
-    request<AdminSession>('', {
-      method: 'POST',
-      body: { action: 'loginAdmin', usuario, password },
-    }),
-
-  /** El administrador logueado cambia su propia contraseña. */
-  cambiarPasswordAdmin: (token: string, passwordActual: string, passwordNueva: string) =>
-    request<void>('', {
-      method: 'POST',
-      body: { action: 'cambiarPasswordAdmin', token, passwordActual, passwordNueva },
-    }),
-  // --- Honorarios del estudio (abonos, cuenta corriente y cobranza) ---
-  getHonorarios: () => request<ResumenHonorarios>('', { method: 'POST', body: { action: 'honorarios' } }),
-  guardarAbono: (payload: AbonoInput) => request<ResumenHonorarios>('', { method: 'POST', body: { action: 'guardarAbono', payload } }),
-  registrarMovimiento: (payload: MovimientoInput) =>
-    request<ResumenHonorarios>('', { method: 'POST', body: { action: 'registrarMovimiento', payload } }),
-  eliminarMovimiento: (id: string) => request<ResumenHonorarios>('', { method: 'POST', body: { action: 'eliminarMovimiento', id } }),
-  generarCargos: (periodo: string, facturar: boolean) =>
-    request<ResultadoGenerarCargos>('', { method: 'POST', body: { action: 'generarCargos', periodo, facturar } }),
-  facturarCargo: (id: string) =>
-    request<{ numero: string; cae: string; resumen: ResumenHonorarios }>('', { method: 'POST', body: { action: 'facturarCargo', id } }),
-  ajustarAbonos: (porcentaje: number) =>
-    request<{ cambios: { cliente: string; antes: number; ahora: number }[]; resumen: ResumenHonorarios }>('', {
-      method: 'POST',
-      body: { action: 'ajustarAbonos', porcentaje },
-    }),
-  guardarConfigHonorarios: (config: ConfigHonorarios) =>
-    request<ResumenHonorarios>('', { method: 'POST', body: { action: 'guardarConfigHonorarios', config } }),
-  /** Portal: saldo de honorarios del cliente logueado y datos para pagar. */
-  getHonorariosPortal: (token: string) =>
-    request<HonorariosPortal>('', { method: 'POST', body: { action: 'clienteHonorarios', token } }),
-  // --- Mis Comprobantes (ARCA): importación y monitoreo automático ---
-  importarComprobantes: (cuit: string, comprobantes: ComprobanteArca[]) =>
-    request<ResultadoImportacion>('', { method: 'POST', body: { action: 'importarComprobantes', cuit, comprobantes } }),
-  getEstadoImportaciones: () => request<EstadoImportacion[]>('', { method: 'POST', body: { action: 'estadoImportaciones' } }),
-  // --- Vencimientos automáticos por terminación de CUIT ---
-  generarVencimientos: (meses: number) =>
-    request<{ generados: number; clientes: number; avisos: string[]; detalle: { cliente: string; impuesto: string; fecha: string }[] }>('', {
-      method: 'POST',
-      body: { action: 'generarVencimientos', meses },
-    }),
-  // --- Control de Responsables Inscriptos y archivo de completados ---
-  getFacturacionRI: () => request<FacturacionRI[]>('', { method: 'POST', body: { action: 'facturacionRI' } }),
-  archivarTareasCompletadas: () => request<{ archivadas: number }>('', { method: 'POST', body: { action: 'archivarTareasCompletadas' } }),
-  archivarVencimientosPresentados: () =>
-    request<{ archivados: number }>('', { method: 'POST', body: { action: 'archivarVencimientosPresentados' } }),
-  /** Comprobantes importados de Mis Comprobantes (para sumarlos en Facturas emitidas). */
-  getComprobantesArca: () => request<ComprobanteGuardado[]>('', { method: 'POST', body: { action: 'comprobantesArca' } }),
-  // --- Ingresos y egresos por cliente ---
-  getBalance: (cuit: string, anio: string) => request<BalanceCliente>('', { method: 'POST', body: { action: 'balanceCliente', cuit, anio } }),
-  importarEgresos: (cuit: string, movimientos: EgresoInput[]) =>
-    request<{ nuevos: number; duplicados: number }>('', { method: 'POST', body: { action: 'importarEgresos', cuit, movimientos } }),
-  actualizarEgreso: (clave: string, cambios: { categoria?: string; esGasto?: boolean }) =>
-    request<{ ok: boolean }>('', { method: 'POST', body: { action: 'actualizarEgreso', clave, cambios } }),
-  eliminarEgresos: (claves: string[]) => request<{ eliminados: number }>('', { method: 'POST', body: { action: 'eliminarEgresos', claves } }),
+  login: async (email: string, password: string) =>
+    (await request<{ data: Omit<Sesion, 'email'> }>('POST', '/api/auth/login', { email, password })).data,
+  miComercio: async () => (await request<{ data: Comercio }>('GET', '/api/comercio')).data,
+  comercios: async () => (await request<{ data: Comercio[] }>('GET', '/api/comercios')).data,
+  crearComercio: async (d: Record<string, unknown>) => (await request<{ data: Comercio }>('POST', '/api/comercios', d)).data,
+  productos: async () => (await request<{ data: Producto[] }>('GET', '/api/productos')).data,
+  crearProducto: async (d: { nombre: string; precio: number; alicuotaIva: number; esServicio: boolean }) =>
+    (await request<{ data: Producto }>('POST', '/api/productos', d)).data,
+  facturas: async () => (await request<{ data: Factura[] }>('GET', '/api/facturas')).data,
+  facturar: async (d: DatosFactura) => (await request<{ data: Factura }>('POST', '/api/facturas', d)).data,
+  crearLote: async (archivo: string, facturas: DatosFactura[]) =>
+    (await request<{ data: { loteId: string; total: number } }>('POST', '/api/lotes', { archivo, facturas })).data,
+  lote: async (id: string) =>
+    (await request<{ data: { id: string; total: number; resumen: Record<string, number> } }>('GET', `/api/lotes/${id}`)).data,
 };
+
+export const TIPOS: Record<number, string> = { 1: 'Factura A', 6: 'Factura B', 11: 'Factura C' };
+export function tiposPermitidos(c?: Pick<Comercio, 'condicion_fiscal'> | null): number[] {
+  if (!c) return [];
+  return c.condicion_fiscal === 'monotributo' ? [11] : [6, 1];
+}
+export function numeroFactura(f: Pick<Factura, 'cbte_tipo' | 'punto_venta' | 'numero'>): string {
+  const t = TIPOS[f.cbte_tipo] ?? `Tipo ${f.cbte_tipo}`;
+  return f.numero ? `${t} ${String(f.punto_venta).padStart(5, '0')}-${String(f.numero).padStart(8, '0')}` : t;
+}

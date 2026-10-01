@@ -1,7 +1,7 @@
 {
-  "name": "Antonella Bertero - Estudio Contable",
-  "short_name": "AB Estudio",
-  "description": "Gestión interna y facturación electrónica del estudio.",
+  "name": "Facturador para comercios",
+  "short_name": "Facturador",
+  "description": "Facturación electrónica para comercios.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

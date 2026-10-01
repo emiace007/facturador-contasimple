@@ -32,3 +32,9 @@ export function formatMesCorto(iso: string): string {
   const label = d.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' });
   return label.replace('.', '');
 }
+
+/** Importes que vienen del servidor (texto con punto decimal, ej. "1500.00"). No usar formatMoney: lo leería como formato argentino. */
+export function formatMonto(value: string | number): string {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+}

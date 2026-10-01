@@ -28,6 +28,8 @@ const call = async (m, p, body, token, comercio) => {
   const ta = (await call('POST', '/api/auth/login', { email: 'a@a.com', password: 'clave-a-1234' })).data.token;
   const tb = (await call('POST', '/api/auth/login', { email: 'b@b.com', password: 'clave-b-1234' })).data.token;
 
+  const mi = await call('GET', '/api/comercio', null, ta, b.data.id);
+  assert.equal(mi.data.id, a.data.id, 'el dueño solo ve su comercio');
   assert.equal((await call('GET', '/api/comercios', null, ta)).s, 403, 'un comercio no lista comercios');
 
   const f1 = await call('POST', '/api/facturas', { importe: 1000, items: [{ descripcion: 'Alfajor', cantidad: 2, precioUnitario: 500 }] }, ta);
