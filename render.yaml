@@ -1,0 +1,23 @@
+# Blueprint de Render: en Render -> New -> Blueprint -> elegir este repo.
+# Los valores marcados sync:false los completás vos en el panel (son secretos, no van al repo).
+services:
+  - type: web
+    name: facturador-contasimple-api
+    runtime: node
+    rootDir: arca
+    plan: free
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: AFIP_ENV
+        value: homologacion        # pasar a "produccion" solo a propósito: cada CAE es una factura real
+      - key: CORS_ORIGIN
+        sync: false                # URL de la web en Netlify, ej. https://contasimple.netlify.app
+      - key: DATABASE_URL
+        sync: false                # Supabase -> Connect -> Session pooler (usuario app_user.<project-ref>)
+      - key: AFIP_CERT_PEM
+        sync: false                # certificado del estudio (PEM o base64)
+      - key: AFIP_KEY_PEM
+        sync: false                # clave privada del estudio (PEM o base64)
