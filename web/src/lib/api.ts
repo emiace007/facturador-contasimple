@@ -10,6 +10,7 @@ export interface Sesion {
 export interface Comercio {
   id: string;
   razon_social: string;
+  nombre_fantasia?: string | null;
   cuit: string;
   condicion_fiscal: 'monotributo' | 'responsable_inscripto';
   punto_venta: number | null;
@@ -19,9 +20,12 @@ export interface Comercio {
   iibb?: string | null;
   inicio_actividades?: string | null;
   categoria_monotributo?: string | null;
+  alicuota_default?: string | number | null;
 }
 export interface DatosComercio {
   razonSocial: string;
+  nombreFantasia: string;
+  alicuotaDefault: string;
   domicilio: string;
   iibb: string;
   inicioActividades: string;
@@ -182,6 +186,7 @@ export const api = {
   productos: async () => (await request<{ data: Producto[] }>('GET', '/api/productos')).data,
   crearProducto: async (d: { nombre: string; precio: number; alicuotaIva: number; esServicio: boolean }) =>
     (await request<{ data: Producto }>('POST', '/api/productos', d)).data,
+  borrarFactura: async (id: string) => { await request('POST', `/api/facturas/${id}/borrar`); },
   resumen: async () => (await request<{ data: { hoy_total: string; hoy_cantidad: number; mes_total: string; mes_cantidad: number } }>('GET', '/api/resumen')).data,
   facturas: async () => (await request<{ data: Factura[] }>('GET', '/api/facturas')).data,
   facturar: async (d: DatosFactura) => (await request<{ data: Factura }>('POST', '/api/facturas', d)).data,
@@ -190,6 +195,9 @@ export const api = {
   lote: async (id: string) =>
     (await request<{ data: { id: string; total: number; resumen: Record<string, number> } }>('GET', `/api/lotes/${id}`)).data,
 };
+
+/** Nombre para mostrar: el de fantasía si lo tiene, si no la razón social. */
+export const nombreComercio = (c: Pick<Comercio, 'razon_social' | 'nombre_fantasia'>) => (c.nombre_fantasia && c.nombre_fantasia.trim()) || c.razon_social;
 
 export const TIPOS: Record<number, string> = { 1: 'Factura A', 6: 'Factura B', 11: 'Factura C' };
 export function tiposPermitidos(c?: Pick<Comercio, 'condicion_fiscal'> | null): number[] {
