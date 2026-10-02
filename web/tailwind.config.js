@@ -2,6 +2,20 @@
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
+    // Orden importa: las reglas que aparecen después pisan a las anteriores.
+    screens: {
+      // Menú lateral: tablet parada, compu o cualquier pantalla acostada (celular o tablet apaisados)
+      lateral: { raw: '(min-width: 768px), (orientation: landscape) and (min-width: 640px)' },
+      // Facturar en dos columnas (teclado a la derecha): pantallas anchas o acostadas
+      dos: { raw: '(min-width: 1024px), (orientation: landscape) and (min-width: 640px)' },
+      sm: '640px',
+      md: '768px',
+      lg: '1024px',
+      xl: '1280px',
+      '2xl': '1536px',
+      // Pantallas bajitas (celular acostado): todo más compacto
+      bajo: { raw: '(orientation: landscape) and (max-height: 540px)' },
+    },
     extend: {
       fontFamily: {
         sans: ['"Nunito Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
