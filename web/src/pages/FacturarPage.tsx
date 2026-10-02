@@ -119,19 +119,19 @@ function Caja({ comercio }: { comercio: Comercio }) {
   const prods = productos.data ?? [];
 
   return (
-    <div className="md:grid md:grid-cols-[minmax(0,1fr)_340px] md:gap-6 md:items-start">
-      <div className="space-y-4">
+    <div className="dos:grid dos:grid-cols-[minmax(0,1fr)_minmax(270px,340px)] dos:gap-5 lg:gap-6 dos:items-start">
+      <div className="space-y-4 bajo:space-y-2.5">
         {/* Visor del importe */}
-        <section className="rounded-3xl bg-brand-600 text-white px-5 pt-3 pb-4 md:pt-4 md:pb-5" aria-live="polite">
+        <section className="rounded-3xl bg-brand-600 text-white px-5 pt-3 pb-4 lateral:pt-4 lateral:pb-5 bajo:!pt-2 bajo:!pb-3 bajo:rounded-2xl" aria-live="polite">
           <div className="flex items-center justify-between gap-2">
             <span className="text-base text-brand-100">{TIPOS[cbteTipo]}{cbteTipo !== 11 && ` (IVA ${String(alicuota).replace('.', ',')}%)`}</span>
             {(tecleado || lineas.length > 0) && (
-              <button onClick={() => { setTecleado(''); setLineas([]); }} className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 h-9 px-3 rounded-full bg-white/15 text-sm font-bold">
-                <X size={16} /> Borrar todo
+              <button aria-label="Borrar todo" onClick={() => { setTecleado(''); setLineas([]); }} className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 h-9 px-3 rounded-full bg-white/15 text-sm font-bold">
+                <X size={16} /> <span className="bajo:hidden">Borrar todo</span>
               </button>
             )}
           </div>
-          <p className="mt-1 text-[2.6rem] leading-none md:text-6xl font-extrabold tabular-nums tracking-tight break-all">
+          <p className="mt-1 text-[2.6rem] leading-none lg:text-6xl bajo:!text-[2.1rem] font-extrabold tabular-nums tracking-tight break-all">
             {lineas.length ? pesos(total) : mostrarTecleado(tecleado)}
           </p>
           {lineas.length > 0 && libre > 0 && <p className="mt-2 text-sm text-brand-100">Incluye {mostrarTecleado(tecleado)} cargado a mano</p>}
@@ -144,7 +144,7 @@ function Caja({ comercio }: { comercio: Comercio }) {
             <div className="grid grid-cols-4 gap-1.5 flex-1" role="radiogroup">
               {[21, 10.5, 27, 0].map((a) => (
                 <button key={a} role="radio" aria-checked={alicuota === a} onClick={() => setAlicuota(a)}
-                  className={clsx('h-12 rounded-xl border-2 text-base font-extrabold tabular-nums',
+                  className={clsx('h-12 bajo:h-10 rounded-xl border-2 text-base font-extrabold tabular-nums',
                     alicuota === a ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-brand-900')}>
                   {String(a).replace('.', ',')}%
                 </button>
@@ -156,10 +156,10 @@ function Caja({ comercio }: { comercio: Comercio }) {
         {/* Productos para tocar */}
         {prods.length > 0 && (
           <section aria-label="Productos">
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:overflow-visible">
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 lateral:mx-0 lateral:px-0 lg:flex-wrap lg:overflow-visible">
               {prods.map((p) => (
                 <button key={p.id} onClick={() => sumarProducto(p)}
-                  className="shrink-0 min-w-[8.5rem] text-left rounded-2xl bg-white border-2 border-slate-200 px-4 py-3 active:border-brand-500 active:bg-brand-50 hover:border-brand-300">
+                  className="shrink-0 min-w-[8.5rem] text-left rounded-2xl bg-white border-2 border-slate-200 px-4 py-3 bajo:py-2 active:border-brand-500 active:bg-brand-50 hover:border-brand-300">
                   <span className="block text-base font-bold text-brand-950 leading-tight">{p.nombre}</span>
                   <span className="block mt-1 text-sm font-semibold text-slate-500 tabular-nums">{pesos(Number(p.precio))}</span>
                 </button>
@@ -187,8 +187,8 @@ function Caja({ comercio }: { comercio: Comercio }) {
           </section>
         )}
 
-        {/* Teclado en celular */}
-        <div className="md:hidden"><Teclado onTecla={tecla} /></div>
+        {/* Teclado en celular parado y tablet parada */}
+        <div className="dos:hidden"><Teclado onTecla={tecla} /></div>
 
         {/* Cliente */}
         <section className="rounded-2xl bg-white border border-slate-200/80 p-4 space-y-3" aria-label="Cliente">
@@ -257,7 +257,7 @@ function Caja({ comercio }: { comercio: Comercio }) {
       </div>
 
       {/* Escritorio: teclado y botón a la derecha */}
-      <aside className="hidden md:block md:sticky md:top-6 space-y-3">
+      <aside className="hidden dos:block dos:sticky dos:top-6 bajo:top-3 space-y-3 bajo:space-y-2">
         <Teclado onTecla={tecla} />
         <BotonEmitir total={total} valido={valido} onClick={() => setConfirmar(true)} />
         <Ayuda total={total} docOk={docOk} ptoVta={ptoVta} />
@@ -265,18 +265,49 @@ function Caja({ comercio }: { comercio: Comercio }) {
       </aside>
 
       {/* Celular: botón fijo arriba de la barra de menú */}
-      <div className="md:hidden fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 px-4 pb-3 pt-2 bg-gradient-to-t from-[#eef1f7] via-[#eef1f7] to-transparent">
+      <div className="dos:hidden fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] lateral:bottom-0 lateral:left-[5.5rem] lateral:pb-[calc(0.75rem+env(safe-area-inset-bottom))] z-20 px-4 lateral:px-6 pb-3 pt-2 bg-gradient-to-t from-[#eef1f7] via-[#eef1f7] to-transparent">
         {m.error && <p className="mb-2 text-sm text-red-600">{(m.error as Error).message}</p>}
         <BotonEmitir total={total} valido={valido} onClick={() => setConfirmar(true)} />
       </div>
-      <div className="md:hidden h-20" aria-hidden />
+      <div className="dos:hidden h-20" aria-hidden />
 
       {confirmar && (
         <Confirmacion
           tipo={TIPOS[cbteTipo] + (cbteTipo !== 11 ? ` (IVA ${String(alicuota).replace('.', ',')}%)` : '')} total={total}
           cliente={cf && !esA ? 'Consumidor final' : `${nombre.trim() || (docLimpio.length === 11 ? 'CUIT' : 'DNI')} ${docLimpio}`}
-          emitiendo={m.isPending} onSi={() => m.mutate()} onNo={() => setConfirmar(false)} />
+          emitiendo={m.isPending} onSi={() => { setConfirmar(false); m.mutate(); }} onNo={() => setConfirmar(false)} />
       )}
+      {m.isPending && <Emitiendo total={total} />}
+    </div>
+  );
+}
+
+/** Pantalla de espera mientras ARCA autoriza la factura: ruedita, segundos y qué está pasando. */
+function Emitiendo({ total }: { total: number }) {
+  const [seg, setSeg] = useState(0);
+  useEffect(() => {
+    const t0 = Date.now();
+    const id = setInterval(() => setSeg(Math.floor((Date.now() - t0) / 1000)), 250);
+    return () => clearInterval(id);
+  }, []);
+  const paso = seg < 3 ? 'Conectando con ARCA…'
+    : seg < 10 ? 'Pidiendo la autorización (CAE)…'
+    : seg < 25 ? 'ARCA está tardando un poco más de lo normal…'
+    : 'El servidor se estaba despertando. Ya casi…';
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-brand-950/70 p-6" role="alertdialog" aria-modal="true" aria-live="assertive" aria-label="Emitiendo factura">
+      <div className="w-full max-w-sm rounded-3xl bg-white p-7 bajo:p-5 text-center space-y-4 bajo:space-y-2 bajo:max-w-md">
+        <div className="relative mx-auto h-28 w-28 bajo:h-20 bajo:w-20">
+          <div className="absolute inset-0 rounded-full border-[10px] bajo:border-8 border-brand-100" />
+          <div className="absolute inset-0 rounded-full border-[10px] bajo:border-8 border-transparent border-t-acento-400 border-r-brand-600 motion-safe:animate-spin" />
+          <div className="absolute inset-0 grid place-items-center">
+            <span className="text-3xl bajo:text-2xl font-extrabold tabular-nums text-brand-950">{seg}<span className="text-base font-bold text-slate-500"> s</span></span>
+          </div>
+        </div>
+        <p className="text-xl bajo:text-lg font-extrabold text-brand-950">Haciendo la factura de {pesos(total)}</p>
+        <p className="text-base text-slate-600 min-h-[3rem] bajo:min-h-0">{paso}</p>
+        <p className="text-sm font-semibold text-amber-700">No cierres esta pantalla ni vuelvas a tocar Facturar.</p>
+      </div>
     </div>
   );
 }
@@ -287,7 +318,7 @@ function Teclado({ onTecla }: { onTecla: (k: string) => void }) {
     <div className="grid grid-cols-3 gap-2" aria-label="Teclado numérico">
       {teclas.map((k) => (
         <button key={k} onClick={() => onTecla(k)} aria-label={k === 'borrar' ? 'Borrar' : k}
-          className={clsx('h-[3.6rem] md:h-16 rounded-2xl text-2xl font-extrabold tabular-nums select-none border-b-4 active:border-b active:translate-y-[3px]',
+          className={clsx('h-[3.6rem] lg:h-16 bajo:!h-[2.9rem] bajo:text-xl rounded-2xl text-2xl font-extrabold tabular-nums select-none border-b-4 active:border-b active:translate-y-[3px]',
             k === 'borrar' ? 'bg-slate-200 border-slate-300 text-slate-700 grid place-items-center' : 'bg-white border-slate-200 text-brand-950')}>
           {k === 'borrar' ? <Delete size={26} /> : k}
         </button>
@@ -313,17 +344,17 @@ function Confirmacion({ tipo, total, cliente, emitiendo, onSi, onNo }: {
   tipo: string; total: number; cliente: string; emitiendo: boolean; onSi: () => void; onNo: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-40 flex items-end md:items-center justify-center bg-brand-950/50 p-0 md:p-6" role="dialog" aria-modal="true" aria-labelledby="conf-titulo">
-      <div className="w-full md:max-w-md rounded-t-3xl md:rounded-3xl bg-white p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] space-y-5">
+    <div className="fixed inset-0 z-40 flex items-end lateral:items-center justify-center bg-brand-950/50 p-0 lateral:p-6 bajo:!p-3" role="dialog" aria-modal="true" aria-labelledby="conf-titulo">
+      <div className="w-full lateral:max-w-md bajo:!max-w-xl rounded-t-3xl lateral:rounded-3xl bg-white p-6 bajo:p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] space-y-5 bajo:space-y-3 max-h-full overflow-y-auto">
         <h2 id="conf-titulo" className="text-xl font-extrabold text-brand-950">¿Emitimos la factura?</h2>
         <dl className="space-y-2 text-base">
           <div className="flex justify-between gap-3"><dt className="text-slate-500">Tipo</dt><dd className="font-bold">{tipo}</dd></div>
           <div className="flex justify-between gap-3"><dt className="text-slate-500">Cliente</dt><dd className="font-bold text-right">{cliente}</dd></div>
           <div className="flex justify-between gap-3 items-baseline pt-2 border-t border-slate-100"><dt className="text-slate-500">Total</dt><dd className="text-3xl font-extrabold tabular-nums text-brand-950">{pesos(total)}</dd></div>
         </dl>
-        <div className="space-y-2">
-          <button className={botonGrande} disabled={emitiendo} onClick={onSi} autoFocus>{emitiendo ? 'Emitiendo…' : 'Sí, emitir'}</button>
-          <button className={botonSecundario + ' w-full h-14'} disabled={emitiendo} onClick={onNo}>Volver</button>
+        <div className="space-y-2 bajo:space-y-0 bajo:grid bajo:grid-cols-[1fr_2fr] bajo:gap-2">
+          <button className={botonGrande + ' bajo:order-2 bajo:h-14'} disabled={emitiendo} onClick={onSi} autoFocus>Sí, emitir</button>
+          <button className={botonSecundario + ' w-full h-14 bajo:order-1'} disabled={emitiendo} onClick={onNo}>Volver</button>
         </div>
       </div>
     </div>
